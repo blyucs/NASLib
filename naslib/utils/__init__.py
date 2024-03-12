@@ -11,6 +11,7 @@ from scipy import stats
 import copy
 
 from collections import OrderedDict
+import matplotlib.pyplot as plt
 
 import random
 import os.path
@@ -22,12 +23,12 @@ from naslib.utils.log import setup_logger
 from fvcore.common.checkpoint import Checkpointer as fvCheckpointer
 from fvcore.common.config import CfgNode
 from fvcore.common.file_io import PathManager
-
+import shutil
 import numpy as np
 import torch
 import torchvision.transforms as transforms
 from pytorch_msssim import ssim, ms_ssim, SSIM, MS_SSIM
-
+import time
 # Expose apis
 from .taskonomy_dataset import get_datasets
 
@@ -247,7 +248,7 @@ def get_config_from_args(args=None, config_type="nas"):
         )
 
     elif config_type == "predictor":
-        config.search.seed = config.seed
+        # config.search.seed = config.seed
         if config.predictor == "lcsvr" and config.experiment_type == "vary_train_size":
             config.save = "{}/{}/{}/{}_train/{}".format(
                 config.out_dir,
@@ -265,12 +266,13 @@ def get_config_from_args(args=None, config_type="nas"):
                 config.seed,
             )
         else:
-            config.save = "{}/{}/{}/{}/{}".format(
+            config.save = "{}/{}/{}/{}/{}/{}".format(
                 config.out_dir,
                 config.dataset,
                 "predictors",
                 config.predictor,
-                config.seed,
+                config.experiment_type,
+                time.strftime("%Y%m%d-%H%M%S")
             )
     elif config_type == "nas_predictor":
         config.search.seed = config.seed
@@ -327,8 +329,10 @@ def get_config_from_args(args=None, config_type="nas"):
     config.data = "{}/data".format(get_project_root())
 
     create_exp_dir(config.save)
-    create_exp_dir(config.save + "/search")  # required for the checkpoints
-    create_exp_dir(config.save + "/eval")
+    # create_exp_dir(config.save + "/search")  # required for the checkpoints
+    # create_exp_dir(config.save + "/eval")
+
+
 
     return config
 
@@ -643,3 +647,36 @@ class Checkpointer(fvCheckpointer):
 
         # return any further checkpoint data
         return checkpoint
+
+def scatter_plot(xs, ys, xlabel, ylabel, title):
+    """
+    Creates scatter plot of the predicted and groundtruth performance
+    :param xs:
+    :param ys:
+    :param xlabel:
+    :param ylabel:
+    :param title:
+    :return:
+    """
+    fig = plt.figure(figsize=(6, 5))
+    plt.tight_layout()
+    plt.grid(True, which='both', ls='-', alpha=0.5)
+    plt.scatter(xs, ys, alpha=0.8, s=4)
+    xs_min = xs.min()
+    xs_max = xs.max()
+    plt.plot(np.linspace(xs_min, xs_max), np.linspace(xs_min, xs_max), 'r', alpha=0.5)
+    plt.xlabel(xlabel=xlabel)
+    plt.ylabel(ylabel=ylabel)
+    plt.title(title)
+    return fig
+
+def create_cpfile_dir(path, scripts_to_save=None):
+  if not os.path.exists(path):
+    os.makedirs(path, exist_ok = True)
+  print('Experiment dir : {}'.format(path))
+
+  if scripts_to_save is not None:
+    os.mkdir(os.path.join(path, 'scripts'))
+    for script in scripts_to_save:
+      dst_file = os.path.join(path, 'scripts', os.path.basename(script))
+      shutil.copyfile(script, dst_file)

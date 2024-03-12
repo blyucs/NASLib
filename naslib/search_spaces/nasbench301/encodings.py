@@ -177,6 +177,28 @@ def add_global_node(mx, ifAdj):
     return mx
 
 
+# def transform_matrix(cell):
+#     normal = cell
+#
+#     node_num = len(normal) + 3
+#
+#     adj = np.zeros((node_num, node_num))
+#
+#     ops = np.zeros((node_num, len(OPS) + 2))
+#
+#     for i in range(len(normal)):
+#         connect, op = normal[i]
+#         if connect == 0 or connect == 1:
+#             adj[connect][i + 2] = 1
+#         else:
+#             adj[(connect - 2) * 2 + 2][i + 2] = 1
+#             adj[(connect - 2) * 2 + 3][i + 2] = 1
+#         ops[i + 2][op] = 1
+#     adj[2:-1, -1] = 1
+#     ops[0:2, 0] = 1
+#     ops[-1][-1] = 1
+#     return adj, ops
+
 def transform_matrix(cell):
     normal = cell
 
@@ -193,12 +215,11 @@ def transform_matrix(cell):
         else:
             adj[(connect - 2) * 2 + 2][i + 2] = 1
             adj[(connect - 2) * 2 + 3][i + 2] = 1
-        ops[i + 2][op] = 1
+        ops[i + 2][op+1] = 1 # modified the bug
     adj[2:-1, -1] = 1
-    ops[0:2, 0] = 1
-    ops[-1][-1] = 1
+    ops[0:2, 0] = 1   # identity
+    ops[-1][-1] = 1  # output
     return adj, ops
-
 
 def encode_seminas(arch):
     matrices = []
@@ -255,6 +276,17 @@ def encode_gcn(arch):
         for row in range(col):
             matrix_final[row, col] = matrices[0][row, col]
             matrix_final[row + mat_length, col + mat_length] = matrices[1][row, col]
+
+    # add 10 -> 11,12
+    matrix_final[mat_length-1][mat_length] = 1
+    matrix_final[mat_length-1][mat_length+1] = 1
+
+    # add 10 -> 10    # self-loop
+    # matrix_final[mat_length-1][mat_length-1] = 1
+
+    # add 21 --> 0, 1   this cause the performance collapse
+    # matrix_final[merged_length-1][0] = 1
+    # matrix_final[merged_length-1][1] = 1
 
     ops_onehot = np.concatenate((ops[0], ops[1]), axis=0)
 

@@ -9,9 +9,10 @@ import torch
 from scipy import stats
 from sklearn import metrics
 import math
+import matplotlib.pyplot as plt
 
 from naslib.search_spaces.core.query_metrics import Metric
-from naslib.utils import generate_kfold, cross_validation
+from naslib.utils import generate_kfold, cross_validation, scatter_plot
 
 logger = logging.getLogger(__name__)
 
@@ -318,19 +319,22 @@ class PredictorEvaluator(object):
         method_type = None
         if hasattr(self.predictor, 'method_type'):
             method_type = self.predictor.method_type
-        print(
+        logger.info(
             "dataset: {}, predictor: {}, spearman {}".format(
                 self.dataset, method_type, np.round(results_dict["spearman"], 4)
             )
         )
-        print("full ytest", results_dict["full_ytest"])
-        print("full testpred", results_dict["full_testpred"])
+        # print("full ytest", results_dict["full_ytest"])
+        # print("full testpred", results_dict["full_testpred"])
         # end specific code for zero-cost experiments.
-        
+        fig = scatter_plot(np.array(results_dict["full_ytest"]), np.array(results_dict["full_testpred"]), xlabel='Predicted', ylabel='True', title='')
+        fig.savefig(os.path.join(self.config.save, 'pred_vs_true_valid.jpg'))
+        plt.close()
+
         # print entire results dict:
         print_string = ""
         for key in results_dict:
-            if type(results_dict[key]) not in [str, set, bool]:
+            if type(results_dict[key]) not in [str, set, bool, list]:
                 # todo: serialize other types
                 print_string += key + ": {}, ".format(np.round(results_dict[key], 4))
         logger.info(print_string)
@@ -389,6 +393,7 @@ class PredictorEvaluator(object):
             train_size = self.train_size_single
             fidelity = self.fidelity_single
             self.single_evaluate(full_train_data, test_data, fidelity=fidelity)
+            torch.save(self.predictor.model.state_dict(), os.path.join(self.config.save, 'surrogate_model.model'))
 
         elif self.experiment_type == "vary_train_size":
             fidelity = self.fidelity_single
@@ -536,5 +541,12 @@ class PredictorEvaluator(object):
                         res[key] = int(value)
                     if type(value) == np.float32 or type(value) == np.float64:
                         res[key] = float(value)
+                    if isinstance(value, list):
+                        for i,item in enumerate(value):
+                            if type(item) == np.int32 or type(item) == np.int64:
+                                value[i] = int(item)
+                            if type(item) == np.float32 or type(item) == np.float64:
+                                value[i] = float(item)
 
             json.dump(self.results, file, separators=(",", ":"))
+            # json.dump(res, file, separators=(",", ":"))

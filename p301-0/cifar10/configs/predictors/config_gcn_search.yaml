@@ -1,0 +1,15 @@
+dataset: cifar10
+experiment_type: search
+fidelity_list:
+- 95
+fidelity_single: 95
+max_hpo_time: 0
+out_dir: p301-0
+predictor: gcn
+search_space: nasbench301
+seed: 0
+test_size: 2
+train_size_list:
+- 500
+train_size_single: 20
+uniform_random: 1
